@@ -1,13 +1,14 @@
 import re
 import asyncio
 import logging
+import random
 from bleak import BleakClient
 from potnanny.plugins import BluetoothDevicePlugin
 from potnanny.plugins.mixins import FingerprintMixin
 
 logger = logging.getLogger(__name__)
 
-# version 1.0
+# version 1.1
 
 class XiaomiMJHT(BluetoothDevicePlugin, FingerprintMixin):
     name = 'Xiaomi MJHT Hygrometer'
@@ -29,18 +30,14 @@ class XiaomiMJHT(BluetoothDevicePlugin, FingerprintMixin):
             raise ValueError('Plugin requires device mac address')
 
 
-    async def poll(self, retries=4):
-        values = {}
-        while retries > 0:
-            async with BleakClient(self.address) as client:
+    async def poll(self):
+        values = None
+        async with BleakClient(self.address) as client:
+            try:
                 values = await self._read_measurements(client)
-                if values:
-                    retries = 0
-                    break
-
-            retries -= 1
-            if retries:            
-                await asyncio.sleep(.3)
+                await client.disconnect()
+            except Exception as x:
+                logger.debug(x)
 
         return values
 
@@ -49,7 +46,7 @@ class XiaomiMJHT(BluetoothDevicePlugin, FingerprintMixin):
         uuid = '226caa55-6476-4566-7562-66734470666d'
         bufr = None
         tries = 10
-        values = {}
+        values = None
 
         def callback(sender, data):
             nonlocal bufr
@@ -60,8 +57,9 @@ class XiaomiMJHT(BluetoothDevicePlugin, FingerprintMixin):
             if bufr:
                 tries = 0
                 break
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.5)
             tries -= 1
+
         await client.stop_notify(uuid)
 
         if bufr:

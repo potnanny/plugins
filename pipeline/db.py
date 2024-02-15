@@ -1,9 +1,9 @@
 import asyncio
 import logging
-import potnanny.database as db
-from potnanny.locks import LOCKS
+from potnanny.database import db, lock
 from potnanny.plugins import PipelinePlugin
 from potnanny.models.measurement import Measurement, MeasurementSchema
+
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +15,6 @@ class DBPipeline(PipelinePlugin):
 
     name = "Database Insert Plugin"
     description = "Insert measurements to Potnanny database"
-
-    def __init__(self, *args, **kwargs):
-        try:
-            self.lock = LOCKS['db']
-        except:
-            self.lock = None
 
 
     async def input(self, measurements):
@@ -34,25 +28,14 @@ class DBPipeline(PipelinePlugin):
         """
 
         schema = MeasurementSchema(many=True)
+        clean = schema.load(measurements)
 
-        async def db_execute(f):
-            if self.lock:
-                async with self.lock:
-                    await f()
-            else:
-                await f()
+        async with lock:
+            async with db.transaction():
+                for m in clean:
+                    try:
+                        obj = await Measurement.create(**m)
+                    except Exception as x:
+                        logger.debug(x)
 
-        async def perform():
-            try:
-                async with db.session() as session:
-                    clean = schema.load(measurements)
-                    for m in clean:
-                        obj = Measurement(**m)
-                        session.add(obj)
-
-                    await session.commit()
-            except Exception as x:
-                logger.warning(x)
-
-        await db_execute(perform)
 

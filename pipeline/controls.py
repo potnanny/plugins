@@ -2,7 +2,6 @@ import asyncio
 import logging
 from potnanny.plugins import PipelinePlugin
 from potnanny.models.control import Control
-from potnanny.models.interface import ObjectInterface
 
 
 logger = logging.getLogger(__name__)
@@ -22,8 +21,8 @@ class ControlPipeline(PipelinePlugin):
 
     async def input(self, measurements):
         tasks = []
-        controls = await ObjectInterface(Control).get_all()
-        if controls is None:
+        controls = await Control.select()
+        if not controls:
             return
 
         for c in controls:
@@ -35,7 +34,6 @@ class ControlPipeline(PipelinePlugin):
                         continue
                     if (c.attributes['type'] != m['type']):
                         continue
-
                     tasks.append(c.input(m))
                 except Exception as x:
                     logger.debug(x)

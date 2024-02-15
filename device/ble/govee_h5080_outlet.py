@@ -174,7 +174,7 @@ class GoveeH5080(BluetoothDevicePlugin, FingerprintMixin):
 
 
     def read_advertisement(self, device, advertisement):
-        results = {}
+        results = None
         key = 34818
         if key not in advertisement.manufacturer_data:
             return results
@@ -266,16 +266,21 @@ class GoveeH5080(BluetoothDevicePlugin, FingerprintMixin):
                     self.key_code = [int(i) for i in data[3:11]]
                     found = True
 
+
         if self.key_code is None:
             await self.connect()
             payload = self._packet.build(bytearray(H5080Code.WAIT_SECRET))
             await self._client.start_notify(self._rx, handler)
             # tries = (self.ATTEMPTS * 4)
-            tries = 10
+            tries = 8
             while not found and tries:
-                await self._client.write_gatt_char(self._tx, bytearray(payload))
-                await asyncio.sleep(1)
-                tries -= 1
+                try:
+                    await self._client.write_gatt_char(self._tx, bytearray(payload))
+                except:
+                    pass
+                finally:
+                    await asyncio.sleep(1)
+                    tries -= 1
 
             try:
                 await self._client.stop_notify(self._rx)

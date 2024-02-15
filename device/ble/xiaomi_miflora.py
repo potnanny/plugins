@@ -7,7 +7,7 @@ from potnanny.plugins.mixins import FingerprintMixin
 
 logger = logging.getLogger(__name__)
 
-# version 1.0
+# version 1.1
 
 class MiFlora(BluetoothDevicePlugin, FingerprintMixin):
     name = 'Xiaomi Soil Sensor'
@@ -31,20 +31,15 @@ class MiFlora(BluetoothDevicePlugin, FingerprintMixin):
             raise ValueError(msg)
 
 
-    async def poll(self, retries=2):
+    async def poll(self):
         values = None
         async with BleakClient(self.address) as client:
-            while retries > 0:
-                try:
-                    values = await self._read_values(client)
-                    if values:
-                        await client.disconnect()
-                        break
-                except Exception as x:
-                    logger.warning(str(x))
-
-                await asyncio.sleep(0.5)
-                retries -= 1
+            try:
+                values = await self._read_values(client)
+                if values:
+                    await client.disconnect()
+            except Exception as x:
+                logger.warning(x)
 
         return values
 
@@ -186,3 +181,4 @@ class MiFlora(BluetoothDevicePlugin, FingerprintMixin):
             return False
 
         return True
+

@@ -9,7 +9,7 @@ from potnanny.plugins.mixins import FingerprintMixin
 
 logger = logging.getLogger(__name__)
 
-# version 1.0
+# version 1.1
 
 class PacketManager:
     """
@@ -175,7 +175,7 @@ class GoveeH5082(BluetoothDevicePlugin, FingerprintMixin):
 
 
     def read_advertisement(self, device, advertisement):
-        results = {}
+        results = None
         key = 34818
         if key not in advertisement.manufacturer_data:
             return results
@@ -195,7 +195,7 @@ class GoveeH5082(BluetoothDevicePlugin, FingerprintMixin):
         return results
 
 
-    async def on(self, outlet=1):
+    async def on(self, outlet:int = 1):
         """
         Switch device outlet ON
         """
@@ -204,7 +204,7 @@ class GoveeH5082(BluetoothDevicePlugin, FingerprintMixin):
         return rval
 
 
-    async def off(self, outlet=1):
+    async def off(self, outlet:int = 1):
         """
         Switch device outlet OFF
         """
@@ -213,7 +213,7 @@ class GoveeH5082(BluetoothDevicePlugin, FingerprintMixin):
         return rval
 
 
-    async def set_state(self, outlet, value):
+    async def set_state(self, outlet:int, value:int):
         await self.connect()
 
         if bool(value) is True:
@@ -246,7 +246,7 @@ class GoveeH5082(BluetoothDevicePlugin, FingerprintMixin):
             await self.send_key()
             await self._client.write_gatt_char(self._tx, payload)
 
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.6)
             tries -= 1
 
         try:
@@ -277,16 +277,21 @@ class GoveeH5082(BluetoothDevicePlugin, FingerprintMixin):
                     self.key_code = [int(i) for i in data[3:11]]
                     found = True
 
+
         if self.key_code is None:
             await self.connect()
             payload = self._packet.build(bytearray(H5082Code.WAIT_SECRET))
             await self._client.start_notify(self._rx, handler)
             # tries = (self.ATTEMPTS * 4)
-            tries = 10
+            tries = 8
             while not found and tries:
-                await self._client.write_gatt_char(self._tx, bytearray(payload))
-                await asyncio.sleep(1)
-                tries -= 1
+                try:
+                    await self._client.write_gatt_char(self._tx, bytearray(payload))
+                except:
+                    pass
+                finally:
+                    await asyncio.sleep(1)
+                    tries -= 1
 
             try:
                 await self._client.stop_notify(self._rx)
@@ -308,7 +313,7 @@ class GoveeH5082(BluetoothDevicePlugin, FingerprintMixin):
             raise ValueError("No secret to tell")
 
         payload = self._packet.build(
-            bytearray(H5082Code.send_key + bytearray(self.key_code))
-        )
+            bytearray(
+                H5082Code.send_key + bytearray(self.key_code)))
         await self._client.write_gatt_char(self._tx, payload)
 

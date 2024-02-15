@@ -5,7 +5,7 @@ from potnanny.plugins.mixins import FingerprintMixin
 
 logger = logging.getLogger(__name__)
 
-# version 1.0
+# version 1.1
 
 class SwitchbotHygrometer(BluetoothDevicePlugin, FingerprintMixin):
     """
@@ -29,7 +29,6 @@ class SwitchbotHygrometer(BluetoothDevicePlugin, FingerprintMixin):
         uuid = '0000fd3d-0000-1000-8000-00805f9b34fb'
         # uuid = '00000d00-0000-1000-8000-00805f9b34fb'
 
-        logger.debug(advertisement)
 
         if (hasattr(advertisement, 'service_data') and 
             uuid in advertisement.service_data):
@@ -49,13 +48,13 @@ class SwitchbotHygrometer(BluetoothDevicePlugin, FingerprintMixin):
                 'battery': battery
             }
         else:
-            logger.warning("Unrecognized advertisement data")
-            return {}
+            logger.warning(f"Unrecognized advertisement data: {advertisement}")
+            return None
 
         if self._validate(results):
             return results
         else:
-            return {}
+            return None
 
 
     def _validate(self, m):
